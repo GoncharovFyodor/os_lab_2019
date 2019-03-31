@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
   int pnum = -1;
-  int to = 0;
+  //int to = 0;
   bool by_files = false;
 
   while (true) {
@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     static struct option options[] = {{"seed", required_argument, 0, 0},
                                       {"array_size", required_argument, 0, 0},
                                       {"pnum", required_argument, 0, 0},
-                                      {"timeout", optional_argument,0,0},
+                                      /*{"timeout", optional_argument,0,0},*/
                                       {"by_files", no_argument, 0, 'f'},
                                       {0, 0, 0, 0}};
 
@@ -65,13 +65,13 @@ int main(int argc, char **argv) {
             // error handling
             break;
           case 3:
-            to = atoi(optarg);
+            /*to = atoi(optarg);
             if (array_size <= 0) {
                 printf("timeout is a positive number\n");
                 return 1;
             }
             break;
-          case 4:
+          case 4:*/
             by_files = true;
             break;
 
