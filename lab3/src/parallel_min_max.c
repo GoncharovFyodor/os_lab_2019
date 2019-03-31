@@ -19,7 +19,8 @@ int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
   int pnum = -1;
-  bool with_files = false;
+  int to = 0;
+  bool by_files = false;
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -27,6 +28,7 @@ int main(int argc, char **argv) {
     static struct option options[] = {{"seed", required_argument, 0, 0},
                                       {"array_size", required_argument, 0, 0},
                                       {"pnum", required_argument, 0, 0},
+                                      {"timeout", optional_argument,0,0},
                                       {"by_files", no_argument, 0, 'f'},
                                       {0, 0, 0, 0}};
 
@@ -40,21 +42,37 @@ int main(int argc, char **argv) {
         switch (option_index) {
           case 0:
             seed = atoi(optarg);
-            // your code here
+            if (seed <= 0) {
+                printf("seed is a positive number\n");
+                return 1;
+            }
             // error handling
             break;
           case 1:
             array_size = atoi(optarg);
-            // your code here
+            if (array_size <= 0) {
+                printf("array_size is a positive number\n");
+                return 1;
+            }
             // error handling
             break;
           case 2:
             pnum = atoi(optarg);
-            // your code here
+            if (array_size <= 0) {
+                printf("pnum is a positive number\n");
+                return 1;
+            }
             // error handling
             break;
           case 3:
-            with_files = true;
+            to = atoi(optarg);
+            if (array_size <= 0) {
+                printf("timeout is a positive number\n");
+                return 1;
+            }
+            break;
+          case 4:
+            by_files = true;
             break;
 
           defalut:
@@ -62,7 +80,7 @@ int main(int argc, char **argv) {
         }
         break;
       case 'f':
-        with_files = true;
+        by_files = true;
         break;
 
       case '?':
@@ -90,49 +108,80 @@ int main(int argc, char **argv) {
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
-
+  FILE *fpmin,*fpmax;
+  int pipefd[2];
   for (int i = 0; i < pnum; i++) {
+   if (pipe(pipefd) == -1) {
+    perror("pipe");
+    exit(EXIT_FAILURE);
+    }
     pid_t child_pid = fork();
     if (child_pid >= 0) {
       // successful fork
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-
         // parallel somehow
-
-        if (with_files) {
+        if (by_files) {
           // use files here
+          printf("FILES:\n");
+          struct MinMax file_min_max;
+          file_min_max=GetMinMax(array,0,array_size);
+          fpmin=fopen("min.txt","w");
+          fprintf(fpmin,"%d",file_min_max.min);
+          fclose(fpmin);
+          fpmax=fopen("max.txt","w");
+          fprintf(fpmax,"%d",file_min_max.max);
+          fclose(fpmax);
+          exit(0);
+          
         } else {
           // use pipe here
-        }
+          printf("PIPE:\n");
+          close(pipefd[0]);
+          struct MinMax pipe_min_max=GetMinMax(array,0,array_size);
+          int pipe_min=pipe_min_max.min;
+          int pipe_max=pipe_min_max.max;
+          write(pipefd[1], &pipe_min, sizeof(int));
+          write(pipefd[1], &pipe_max, sizeof(int));
+          close(pipefd[1]);          /* Читатель видит EOF */   
+          wait(NULL);
+          //exit(EXIT_SUCCESS);
+        }  
         return 0;
       }
-
+    
     } else {
       printf("Fork failed!\n");
       return 1;
     }
-  }
-
+  };
   while (active_child_processes > 0) {
     // your code here
-
     active_child_processes -= 1;
   }
 
   struct MinMax min_max;
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
-
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
-    if (with_files) {
+    if (by_files) {
       // read from files
+      fpmin=fopen("min.txt","r");
+      fscanf(fpmin,"%d",&min);
+      fclose(fpmin);
+      fpmax=fopen("max.txt","r");
+      fscanf(fpmax,"%d",&max);
+      fclose(fpmax);
     } else {
-      // read from pipes
+        // read from pipes
+        read(pipefd[0], &min, sizeof(int));
+        read(pipefd[0], &max, sizeof(int));
+        close(pipefd[0]);
+        //_exit(EXIT_SUCCESS);
     }
 
     if (min < min_max.min) min_max.min = min;
@@ -151,5 +200,6 @@ int main(int argc, char **argv) {
   printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
   fflush(NULL);
+  
   return 0;
 }
