@@ -11,16 +11,16 @@
  * Simple multi-threaded example with a mutex lock.
  */
 #include <errno.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 void do_one_thing(int *);
 void do_another_thing(int *);
 void do_wrap_up(int);
 int common = 0; /* A shared variable for two threads */
 int r1 = 0, r2 = 0, r3 = 0;
-pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t* mut = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
   pthread_t thread1, thread2;
@@ -57,7 +57,7 @@ void do_one_thing(int *pnum_times) {
   unsigned long k;
   int work;
   for (i = 0; i < 50; i++) {
-    // pthread_mutex_lock(&mut);
+     pthread_mutex_lock(&mut);
     printf("doing one thing\n");
     work = *pnum_times;
     printf("counter = %d\n", work);
@@ -65,7 +65,7 @@ void do_one_thing(int *pnum_times) {
     for (k = 0; k < 500000; k++)
       ;                 /* long cycle */
     *pnum_times = work; /* write back */
-	// pthread_mutex_unlock(&mut);
+	 pthread_mutex_unlock(&mut);
   }
 }
 
@@ -74,7 +74,7 @@ void do_another_thing(int *pnum_times) {
   unsigned long k;
   int work;
   for (i = 0; i < 50; i++) {
-    // pthread_mutex_lock(&mut);
+     pthread_mutex_lock(&mut);
     printf("doing another thing\n");
     work = *pnum_times;
     printf("counter = %d\n", work);
@@ -82,7 +82,7 @@ void do_another_thing(int *pnum_times) {
     for (k = 0; k < 500000; k++)
       ;                 /* long cycle */
     *pnum_times = work; /* write back */
-    // pthread_mutex_unlock(&mut);
+     pthread_mutex_unlock(&mut);
   }
 }
 
