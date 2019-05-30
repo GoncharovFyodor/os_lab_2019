@@ -10,7 +10,7 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
+#include "libserver.h"
 #include "pthread.h"
 
 struct FactorialArgs {
@@ -22,21 +22,25 @@ struct FactorialArgs {
 uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
   uint64_t result = 0;
   a = a % mod;
+  //printf("a:%d b:%d mod:%d result:%d\n",a,b,mod,result);
   while (b > 0) {
     if (b % 2 == 1)
       result = (result + a) % mod;
     a = (a * 2) % mod;
     b /= 2;
+    //printf("a:%d b:%d mod:%d result:%d\n",a,b,mod,result);
   }
-
   return result % mod;
 }
 
 uint64_t Factorial(const struct FactorialArgs *args) {
   uint64_t ans = 1;
-
+    int c;
+    for (c = args->begin; c <= args->end; c++){
+        ans = (ans * c)%args->mod;
+        printf("%d: %ld\n",c,ans);
+    }
   // TODO: your code here
-
   return ans;
 }
 
@@ -159,8 +163,8 @@ int main(int argc, char **argv) {
       struct FactorialArgs args[tnum];
       for (uint32_t i = 0; i < tnum; i++) {
         // TODO: parallel somehow
-        args[i].begin = 1;
-        args[i].end = 1;
+        args[i].begin = begin;
+        args[i].end = end;
         args[i].mod = mod;
 
         if (pthread_create(&threads[i], NULL, ThreadFactorial,
@@ -174,10 +178,12 @@ int main(int argc, char **argv) {
       for (uint32_t i = 0; i < tnum; i++) {
         uint64_t result = 0;
         pthread_join(threads[i], (void **)&result);
+        //printf("result: %llu, mod: %d\n", result, mod);
         total = MultModulo(total, result, mod);
+        //printf("%i JJJ\n");
       }
 
-      printf("Total: %llu\n", total);
+      printf("Total: %llu, binded to %d\n", total, port);
 
       char buffer[sizeof(total)];
       memcpy(buffer, &total, sizeof(total));

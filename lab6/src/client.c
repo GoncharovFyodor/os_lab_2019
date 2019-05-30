@@ -11,6 +11,8 @@
 #include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include "libserver.h"
+#define BUFFSIZE 255
 
 struct Server {
   char ip[255];
@@ -99,14 +101,47 @@ int main(int argc, char **argv) {
   }
 
   // TODO: for one server here, rewrite with servers from file
-  unsigned int servers_num = 1;
+  // пробуем открыть файл для чтения
+    FILE* in_servers = fopen(servers, "r");
+    // обрабатываем ошибку открытия файла
+    if ( in_servers == NULL ) {
+        perror( "Ошибка при открытии исходного файла" );
+        return 1;
+    }
+ 
+    unsigned int servers_num = 0; // предполагаем, что строк ноль в файле - т.е. пустой
+    char *arr[255];
+    char *ips[255];
+    printf( "%s %s\n", "Содержимое файла", servers );
+    while(!feof(in_servers))
+    {
+        if(fgets(arr[servers_num], BUFSIZ, in_servers) != NULL){
+            //*ips[servers_num] = '\0';
+           // ips[servers_num]=strtok(arr[servers_num],":");
+            printf("%i -> %s",servers_num+1,arr[servers_num]);
+            ++servers_num;
+            }
+    }
+    printf("\n");
+    fclose(in_servers);
+    printf("servers_num = %d\n",servers_num);    
+    
+    /*for(int i=0;i<servers_num;i++){
+        ips[0]=strtok(arr[i],":");
+        //*ips[0] = '\0';
+        printf("%s -> %s\n",arr[i],ips[0]);
+    }*/
   struct Server *to = malloc(sizeof(struct Server) * servers_num);
+  pthread_t *tid = (pthread_t*)malloc(sizeof(pthread_t) * servers_num);
+  int *sck = (int*)malloc(sizeof(int) * servers_num);
   // TODO: delete this and parallel work between servers
-  to[0].port = 20001;
-  memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
-
+  for(int i=0;i<servers_num;i++){
+        to[i].port = 20001+i;//Пока так
+        memcpy(to[i].ip, "127.0.0.1", sizeof("127.0.0.1"));//Пока так
+    }
   // TODO: work continiously, rewrite to make parallel
   for (int i = 0; i < servers_num; i++) {
+    
     struct hostent *hostname = gethostbyname(to[i].ip);
     if (hostname == NULL) {
       fprintf(stderr, "gethostbyname failed with %s\n", to[i].ip);
@@ -118,13 +153,13 @@ int main(int argc, char **argv) {
     server.sin_port = htons(to[i].port);
     server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr);
 
-    int sck = socket(AF_INET, SOCK_STREAM, 0);
-    if (sck < 0) {
+    sck[i] = socket(AF_INET, SOCK_STREAM, 0);
+    if (sck[i] < 0) {
       fprintf(stderr, "Socket creation failed!\n");
       exit(1);
     }
 
-    if (connect(sck, (struct sockaddr *)&server, sizeof(server)) < 0) {
+    if (connect(sck[i], (struct sockaddr *)&server, sizeof(server)) < 0) {
       fprintf(stderr, "Connection failed\n");
       exit(1);
     }
@@ -139,26 +174,33 @@ int main(int argc, char **argv) {
     memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
     memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
 
-    if (send(sck, task, sizeof(task), 0) < 0) {
+    if (send(sck[i], task, sizeof(task), 0) < 0) {
       fprintf(stderr, "Send failed\n");
       exit(1);
     }
-
+}
+for (int i = 0; i < servers_num; i++) {
     char response[sizeof(uint64_t)];
-    if (recv(sck, response, sizeof(response), 0) < 0) {
-      fprintf(stderr, "Recieve failed\n");
+    if (recv(sck[i], response, sizeof(response), 0) < 0) {
+      fprintf(stderr, "Receive failed\n");
       exit(1);
     }
-
+    //printf("V\n");
     // TODO: from one server
     // unite results
     uint64_t answer = 0;
     memcpy(&answer, response, sizeof(uint64_t));
     printf("answer: %llu\n", answer);
 
-    close(sck);
+    close(sck[i]);
   }
-  free(to);
-
+  /*for(int i = 0; i < servers_num; i++)
+    free(ips[i]);
+  free(ips);*/
+  /*for(int i = 0; i < servers_num; i++){
+    free(arr[i]);
+}*/
+  //free(arr); 
+  //free(to);
   return 0;
 }
